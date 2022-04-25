@@ -1,0 +1,2113 @@
+= Type variance in Java and Kotlin
+Иван Пономарев
+:revealjs_theme: black
+:revealjs_customtheme: white_course.css
+:revealjs_slideNumber:
+:revealjs_history:
+:revealjs_progress:
+:encoding: UTF-8
+:lang: ru
+include::_doc_general_attributes.adoc[]
+:doctype: article
+:toclevels: 3
+:imagesdir: images
+:source-highlighter: highlightjs
+:highlightjsdir: highlight
+:icons: font
+:iconfont-remote!:
+:iconfont-name: font-awesome-4.7.0/css/font-awesome
+:revealjs_mouseWheel: true
+:revealjs_center: false
+:revealjs_transition: none
+:revealjs_width: 1600
+:revealjs_height: 900
+:stem: latexmath
+
+
+//== Часть 1. Введение
+:!figure-caption:
+
+[%notitle]
+== Who am I
+
+[cols="30a,70a"]
+|===
+|image::ivan.jpg[]
+|
+
+Ivan Ponomarev
+
+* Staff Engineer @ Synthesized.io
+* Teaching Java @ МФТИ and Mainor
+|===
+
+== Type variance (invariance, covariance, contravariance)
+
+
+
+* "It sounds scary. Do I need to know it?"
+
+== Type variance
+
+* Even experienced Java/Kotlin developers sometimes fail to understand this topic.
+* This leads to poor design of internal APIs: generics are either not used at all, or used incorrectly.
+
+== The reason
+
+* Understanding these concepts allows one to write better APIs.
+
+* API is a foundation of the building, implementation is the building itself.
+
+== How I'm going to explain it
+
+* I will show the full evolution from historical perspective: from Java typed arrays through Java generics to Kotlin generics
+* Thus it will be a walk from simple to complex stuff
+
+
+== We'll be using this example of type hierarchy everywhere
+
+[plantuml,hier,png]
+----
+@startuml
+
+skinparam dpi 150
+
+class Person {
+}
+
+class Employee {
+}
+
+class Manager {
+}
+
+Person <|-- Employee
+Employee <|-- Manager
+
+@enduml
+----
+
+== Possible outcomes
+
+[none]
+* image:wc.png[]  *won't compile*
+* image:rt.png[] *will compile*, but runtime *exception* will occur during execution
+* image:ok.png[] *will compile* and run *normally*
+* image:hp.png[] *will compile* and run, but *heap pollution* will occur +
+(a situation when a variable of a certain type refers to an object that is not of that type)
+
+== Let's get to the roots: Java arrays
+
+Given that the Java array `a` is not empty, what is the return type of `a[0]`?
+
+[cols="50a,50a",width="50%"]
+|===
+| *type of `a`*  | *type of `a[0]`*
+| `Person[]`    |
+| `Employee[]`  |
+| `Manager[]`   |
+| `Object[]`    |
+|===
+
+== Let's get to the roots: Java arrays
+
+Given that the Java array `a` is not empty, what is the return type of `a[0]`?
+
+[cols="50a,50a",width="50%"]
+|===
+| *type of `a`*  | *type of `a[0]`*
+| `Person[]`   | `Person` (or `null`)
+| `Employee[]` | `Employee` (or `null`)
+| `Manager[]`  | `Manager` (or `null`)
+| `Object[]`   | `Object` (or `null`)
+|===
+
+
+== Given that Java array is not empty, what is the result of assigning a value to its element?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+|             |`Person`      | `Employee`    | `Manager`      | `null`
+| `Object[]`  |              |               |                | image:q.png[]
+| `Person[]`  |              |               |                | image:q.png[]
+| `Employee[]`|              |               |                | image:q.png[]
+| `Manager[]` |              |               |                | image:q.png[]
+|===
+
+
+== Given that Java array is not empty, what is the result of assigning a value to its element?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+|             |`Person`      | `Employee`    | `Manager`      | `null`
+| `Object[]`  |              |               |                |image:ok.png[]
+| `Person[]`  |              |               |                |image:ok.png[]
+| `Employee[]`|              |               |                |image:ok.png[]
+| `Manager[]` |              |               |                |image:ok.png[]
+|===
+
+
+== Given that Java array is not empty, what is the result of assigning a value to its element?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+|             |`Person`      | `Employee`    | `Manager`      | `null`
+| `Object[]`  |              |               |                |image:ok.png[]
+| `Person[]`  |              |               |                |image:ok.png[]
+| `Employee[]`|image:q.png[] |               |                |image:ok.png[]
+| `Manager[]` |image:q.png[] |image:q.png[]  |                |image:ok.png[]
+|===
+
+
+== Given that Java array is not empty, what is the result of assigning a value to its element?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+|             |`Person`      | `Employee`    | `Manager`      | `null`
+| `Object[]`  |              |               |                |image:ok.png[]
+| `Person[]`  |              |               |                |image:ok.png[]
+| `Employee[]`|image:wc.png[]|               |                |image:ok.png[]
+| `Manager[]` |image:wc.png[]|image:wc.png[] |                |image:ok.png[]
+|===
+
+
+
+== Given that Java array is not empty, what is the result of assigning a value to its element?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+|             |`Person`      | `Employee`    | `Manager`      | `null`
+| `Object[]`  | image:q.png[]|  image:q.png[]| image:q.png[]  |image:ok.png[]
+| `Person[]`  | image:q.png[]|  image:q.png[]| image:q.png[]  |image:ok.png[]
+| `Employee[]`|image:wc.png[]|  image:q.png[]| image:q.png[]  |image:ok.png[]
+| `Manager[]` |image:wc.png[]|image:wc.png[] | image:q.png[]  |image:ok.png[]
+|===
+
+
+
+== Given that Java array is not empty, what is the result of assigning a value to its element?
+
+WHAT?
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+|             |`Person`      | `Employee`    | `Manager`      | `null`
+| `Object[]`  |image:ok.png[] image:rt.png[]| image:ok.png[] image:rt.png[]|image:ok.png[] image:rt.png[]|image:ok.png[]
+| `Person[]`  |image:ok.png[] image:rt.png[]| image:ok.png[] image:rt.png[]|image:ok.png[] image:rt.png[]|image:ok.png[]
+| `Employee[]`|image:wc.png[]               | image:ok.png[] image:rt.png[]|image:ok.png[] image:rt.png[]|image:ok.png[]
+| `Manager[]` |image:wc.png[]               | image:wc.png[]               |image:ok.png[] image:rt.png[]|image:ok.png[]
+|===
+
+== Can we assign a Java array of a given type to an array of another type?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+| [.right]#To →#
+
+From ↓       |`Object[]` | `Person[]`     |`Employee[]`    |`Manager[]`
+|`Object[]`  | image:ok.png[] | image:q.png[]  | image:q.png[]  | image:q.png[]
+|`Person[]`  |                | image:ok.png[] | image:q.png[]  | image:q.png[]
+|`Employee[]`|                |                | image:ok.png[] | image:q.png[]
+|`Manager[]` |                |                |                | image:ok.png[]
+
+|===
+
+== Can we assign a Java array of a given type to an array of another type?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+| [.right]#To →#
+
+From ↓       |`Object[]` | `Person[]`     |`Employee[]`    |`Manager[]`
+|`Object[]`  | image:ok.png[] | image:wc.png[] | image:wc.png[] | image:wc.png[]
+|`Person[]`  |                | image:ok.png[] | image:wc.png[] | image:wc.png[]
+|`Employee[]`|                |                | image:ok.png[] | image:wc.png[]
+|`Manager[]` |                |                |                | image:ok.png[]
+
+|===
+
+== Can we assign a Java array of a given type to an array of another type?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+| [.right]#To →#
+
+From ↓       |`Object[]` | `Person[]`     |`Employee[]`    |`Manager[]`
+|`Object[]`  | image:ok.png[] | image:wc.png[] | image:wc.png[] | image:wc.png[]
+|`Person[]`  | image:q.png[]  | image:ok.png[] | image:wc.png[] | image:wc.png[]
+|`Employee[]`| image:q.png[]  | image:q.png[]  | image:ok.png[] | image:wc.png[]
+|`Manager[]` | image:q.png[]  | image:q.png[]  | image:q.png[]  | image:ok.png[]
+|===
+
+== Can we assign a Java array of a given type to an array of another type?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+| [.right]#To →#
+
+From ↓       |`Object[]` | `Person[]`     |`Employee[]`    |`Manager[]`
+|`Object[]`  | image:ok.png[] | image:wc.png[] | image:wc.png[] | image:wc.png[]
+|`Person[]`  | image:ok.png[] | image:ok.png[] | image:wc.png[] | image:wc.png[]
+|`Employee[]`| image:ok.png[] | image:ok.png[] | image:ok.png[] | image:wc.png[]
+|`Manager[]` | image:ok.png[] | image:ok.png[] | image:ok.png[] | image:ok.png[]
+|===
+
+== What about this code?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[source,java]
+--
+Manager[] managers = new Manager[10];
+Person[] persons = managers; //this should compile and run
+persons[0] = new Person();   //line 1 ??
+Manager m = managers[0];     //line 2 ?!
+--
+
+== What about this code?
+
+image:rt.png[] image:rt.png[] image:rt.png[] image:rt.png[]
+
+[source,java]
+--
+Manager[] managers = new Manager[10];
+Person[] persons = managers; //this should compile and run
+persons[0] = new Person();   //line 1 ??
+Manager m = managers[0];     //line 2 ?!
+--
+
+image:rt.png[] `ArrayStoreException` at line 1.
+
+
+== Intermediate conclusions about arrays in Java
+
+* Arrays in Java are _reified_ -- that is they store the information about the types of their elements in run time, and they validate types in runtime.
+
+== Intermediate conclusions about arrays in Java
+
+* Arrays in Java are _covariant_ -- which means the following:
+
+[plantuml,cv,png]
+----
+@startuml
+
+skinparam dpi 150
+
+class Person {
+}
+
+class Employee {
+}
+
+class "Person[ ]" {
+}
+
+class "Employee[ ]" {
+}
+
+
+"Person[ ]" <|-- "Employee[ ]"
+"Person[ ]" .> Person
+
+Person <|-- Employee
+
+"Employee[ ]".>Employee
+
+
+@enduml
+----
+
+* Covariancy is safe when we read values, but it is unsafe when we write values. For Java arrays, the problem is partially solved by type checking in runtime due to reification of arrays.
+
+
+== In Java and Kotlin, what is return type of `list.get(0)`, given that list is not empty?
+
+[cols="50a,50a",width=50%]
+|===
+| `List<Person>`   | `Person`
+| `List<Employee>` | `Employee`
+| `List<Manager>`  | `Manager`
+| `List<?>`        | image:q.png[]
+| `List<*>`        | image:q.png[]
+|===
+
+== In Java and Kotlin, what is return type of `list.get(0)`, given that list is not empty?
+
+[cols="50a,50a",width=50%]
+|===
+| `List<Person>`   | `Person`
+| `List<Employee>` | `Employee`
+| `List<Manager>`  | `Manager`
+| `List<?>`        | `Object`
+| `List<*>`        | `Any?`
+|===
+
+
+== What is the result of `list.add(...)` method in Java and Kotlin?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+|                  | `Person` | `Employee` | `Manager` | `null`
+| `List<Person>`   |          |            |           |
+| `List<Employee>` |          |            |           |
+| `List<Manager>`  |          |            |           |
+| `List<?>`
+/ `List<*>`        |          |            |           |
+|===
+
+== What is the result of `list.add(...)` method in Java and Kotlin?
+
+You're kidding, there's no `add` in Kotlin's `List`!
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+|                  | `Person` | `Employee` | `Manager` | `null`
+| `List<Person>`   | image:ha.png[] |  image:ha.png[]  | image:ha.png[]  |image:ha.png[]
+| `List<Employee>` | image:ha.png[] |  image:ha.png[]  | image:ha.png[]  |image:ha.png[]
+| `List<Manager>`  | image:ha.png[] |  image:ha.png[]  | image:ha.png[]  |image:ha.png[]
+| `List<?>`
+/ `List<*>`        | image:ha.png[] |  image:ha.png[]  | image:ha.png[]  |image:ha.png[]
+|===
+
+
+
+== What is the result of `list.add(...)` method in Java and Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="40a,^15a,^15a,^15a,^15a"]
+|===
+|                       | `Person`      | `Employee`    | `Manager`      | `null`
+| `List<Person>` /
+`MutableList<Person?>`   | image:q.png[] | image:q.png[] | image:q.png[]  | 
+| `List<Employee>` /
+`MutableList<Employee?>` |               | image:q.png[] | image:q.png[]  | 
+| `List<Manager>` /
+`MutableList<Manager?>`  |               |               | image:q.png[]  | 
+| `List<?>`             |               |               |                | 
+| `MutableList<*>`      |               |               |                | 
+|===
+
+== What is the result of `list.add(...)` method in Java and Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="40a,^15a,^15a,^15a,^15a"]
+|===
+|                       | `Person`      | `Employee`    | `Manager`      | `null`
+| `List<Person>` /
+`MutableList<Person?>`   | image:ok.png[] | image:ok.png[] | image:ok.png[]  |
+| `List<Employee>` /
+`MutableList<Employee?>` |               | image:ok.png[] | image:ok.png[]  |
+| `List<Manager>` /
+`MutableList<Manager?>`  |               |               | image:ok.png[]  |
+| `List<?>`             |               |               |                |
+| `MutableList<*>`      |               |               |                |
+|===
+
+== What is the result of `list.add(...)` method in Java and Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="40a,^15a,^15a,^15a,^15a"]
+|===
+|                       | `Person`      | `Employee`    | `Manager`      | `null`
+| `List<Person>` /
+`MutableList<Person?>`   | image:ok.png[] | image:ok.png[] | image:ok.png[]  |
+| `List<Employee>` /
+`MutableList<Employee?>` | image:q.png[]  | image:ok.png[] | image:ok.png[]  |
+| `List<Manager>` /
+`MutableList<Manager?>`  | image:q.png[]  | image:q.png[]  | image:ok.png[]  |
+| `List<?>`             |                |                |                 |
+| `MutableList<*>`      |                |                |                 |
+|===
+
+== What is the result of `list.add(...)` method in Java and Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="40a,^15a,^15a,^15a,^15a"]
+|===
+|                       | `Person`      | `Employee`    | `Manager`      | `null`
+| `List<Person>` /
+`MutableList<Person?>`   | image:ok.png[] | image:ok.png[] | image:ok.png[]  |
+| `List<Employee>` /
+`MutableList<Employee?>` | image:wc.png[]  | image:ok.png[] | image:ok.png[]  |
+| `List<Manager>` /
+`MutableList<Manager?>`  | image:wc.png[]  | image:wc.png[]  | image:ok.png[]  |
+| `List<?>`             |                 |                 |                  |
+| `MutableList<*>`      |                 |                 |                  |
+|===
+
+
+== What is the result of `list.add(...)` method in Java and Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="40a,^15a,^15a,^15a,^15a"]
+|===
+|                       | `Person`      | `Employee`    | `Manager`      | `null`
+| `List<Person>` /
+`MutableList<Person?>`   | image:ok.png[] | image:ok.png[] | image:ok.png[]  |
+| `List<Employee>` /
+`MutableList<Employee?>` | image:wc.png[]  | image:ok.png[] | image:ok.png[]  |
+| `List<Manager>` /
+`MutableList<Manager?>`  | image:wc.png[]  | image:wc.png[]  | image:ok.png[]  |
+| `List<?>`             |  image:q.png[] |  image:q.png[] |  image:q.png[]  |
+| `MutableList<*>`      |  image:q.png[] |  image:q.png[] |  image:q.png[]  |
+|===
+
+== What is the result of `list.add(...)` method in Java and Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="40a,^15a,^15a,^15a,^15a"]
+|===
+|                       | `Person`      | `Employee`    | `Manager`      | `null`
+| `List<Person>` /
+`MutableList<Person?>`   | image:ok.png[] | image:ok.png[] | image:ok.png[]  |
+| `List<Employee>` /
+`MutableList<Employee?>` | image:wc.png[]  | image:ok.png[] | image:ok.png[]  |
+| `List<Manager>` /
+`MutableList<Manager?>`  | image:wc.png[]  | image:wc.png[]  | image:ok.png[]  |
+| `List<?>`             |  image:wc.png[] |  image:wc.png[] |  image:wc.png[]  |
+| `MutableList<*>`      |  image:wc.png[] |  image:wc.png[] |  image:wc.png[]  |
+|===
+
+
+== What is the result of `list.add(...)` method in Java and Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="40a,^15a,^15a,^15a,^15a"]
+|===
+|                       | `Person`      | `Employee`    | `Manager`      | `null`
+| `List<Person>` /
+`MutableList<Person?>`   | image:ok.png[] | image:ok.png[] | image:ok.png[]  | image:q.png[]
+| `List<Employee>` /
+`MutableList<Employee?>` | image:wc.png[]  | image:ok.png[] | image:ok.png[]  |image:q.png[]
+| `List<Manager>` /
+`MutableList<Manager?>`  | image:wc.png[]  | image:wc.png[]  | image:ok.png[]  |image:q.png[]
+| `List<?>`             |  image:wc.png[] |  image:wc.png[] |  image:wc.png[]  |image:q.png[]
+| `MutableList<*>`      |  image:wc.png[] |  image:wc.png[] |  image:wc.png[]  |image:q.png[]
+|===
+
+== What is the result of `list.add(...)` method in Java and Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="40a,^15a,^15a,^15a,^15a"]
+|===
+|                       | `Person`      | `Employee`    | `Manager`      | `null`
+| `List<Person>` /
+`MutableList<Person?>`   | image:ok.png[] | image:ok.png[] | image:ok.png[]  | image:ok.png[]
+| `List<Employee>` /
+`MutableList<Employee?>` | image:wc.png[]  | image:ok.png[] | image:ok.png[]  |image:ok.png[]
+| `List<Manager>` /
+`MutableList<Manager?>`  | image:wc.png[]  | image:wc.png[]  | image:ok.png[]  |image:ok.png[]
+| `List<?>`             |  image:wc.png[] |  image:wc.png[] |  image:wc.png[]  |image:ok.png[]
+| `MutableList<*>`      |  image:wc.png[] |  image:wc.png[] |  image:wc.png[]  |image:wc.png[]
+|===
+
+
+== Can we assign these lists to each other?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+| [.right]#To →#
+
+From ↓                  |`List` / `MutableList` `<Person>` |`List` / `MutableList` `<Employee>`|`List` / `MutableList` `<Manager>` |`List<?>`/ `MutableList<*>`
+|`List/MutableList` `<Person>`   | image:ok.png[]  | image:wc.png[] | image:wc.png[]| image:ok.png[]
+|`List/MutableList` `<Employee>`| image:q.png[]   | image:ok.png[] | image:wc.png[]| image:ok.png[]
+|`List/MutableList` `<Manager>`  | image:q.png[]   | image:q.png[]  | image:ok.png[]| image:ok.png[]
+|`List<?>` /
+`MutableList<*>`        | image:q.png[]   | image:q.png[]  | image:q.png[] | image:ok.png[]
+|===
+
+== Can we assign these lists to each other?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+| [.right]#To →#
+
+From ↓                  |`List` / `MutableList` `<Person>` |`List` / `MutableList` `<Employee>`|`List` / `MutableList` `<Manager>` |`List<?>`/ `MutableList<*>`
+|`List/MutableList` `<Person>`   | image:ok.png[]  | image:wc.png[] | image:wc.png[]| image:ok.png[]
+|`List/MutableList` `<Employee>`| image:wc.png[]   | image:ok.png[] | image:wc.png[]| image:ok.png[]
+|`List/MutableList` `<Manager>`  | image:wc.png[]   | image:wc.png[]  | image:ok.png[]| image:ok.png[]
+|`List<?>` /
+`MutableList<*>`        | image:wc.png[]   | image:wc.png[]  | image:wc.png[] | image:ok.png[]
+|===
+
+
+== Intermediate conclusion
+
+* In Java language, generic types are _invariant_, that is assignable only to the types of the exactly same type. +
+
+Otherwise:
+
+[source,java]
+--
+List<Manager> managers = new ArrayList<>();
+List<Person> persons = managers; //won't compile
+persons.add(new Person());  //no runtime check is possible
+--
+
+* In Kotlin, `MutableList` is still invariant.
+* So is `Array<T>`, which is a wrapper around native Java array. Thus, you cannot assign e. g. `Array<String>` to `Array<Any>`.
+
+
+== What about immutable lists in Kotlin?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+| [.right]#To →#
+
+From ↓           |`List<Person>`|`List<Employee>`|`List<Manager>`|`List<*>`
+|`List<Person>`  |image:ok.png[]|image:wc.png[]  |image:wc.png[] |image:ok.png[]
+|`List<Employee>`|image:q.png[]|image:ok.png[]  |image:wc.png[] |image:ok.png[]
+|`List<Manager>` |image:q.png[]|image:q.png[]  |image:ok.png[] |image:ok.png[]
+|`List<*>`       |image:wc.png[]|image:wc.png[]  |image:wc.png[] |image:ok.png[]
+|===
+
+
+== What about immutable lists in Kotlin?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="20a,^20a,^20a,^20a,^20a"]
+|===
+| [.right]#To →#
+
+From ↓           |`List<Person>`|`List<Employee>`|`List<Manager>`|`List<*>`
+|`List<Person>`  |image:ok.png[]|image:wc.png[]  |image:wc.png[] |image:ok.png[]
+|`List<Employee>`|image:ok.png[]|image:ok.png[]  |image:wc.png[] |image:ok.png[]
+|`List<Manager>` |image:ok.png[]|image:ok.png[]  |image:ok.png[] |image:ok.png[]
+|`List<*>`       |image:wc.png[]|image:wc.png[]  |image:wc.png[] |image:ok.png[]
+|===
+
+And you know why it's safe!
+
+
+== Unlike Java, we can declare type variance!
+
+[cols="50a,50a"]
+|===
+|*Java*
+|*Kotlin*
+|
+[source,java]
+public interface
+  List<E>
+  extends Collection<E>
+{...}
+|
+[source,kotlin]
+public interface
+  List<out E> : Collection<E>
+{...}
+|===
+
+
+* `List<E>` in Kotlin *is a covariant* type.
+* But it's safe, because we only read values from Kotlin's list and never write to it!
+
+
+== Why runtime check won't do for mutable lists?
+
+* First, we want to avoid run time exceptions
+
+* Java and Kotlin generics use type erasure. +
+This means that in run time, `List<T>` does not know the `T` and thus cannot perform run time check.
+
+== The story behind generics
+
+* Appeared in Java 5
+
+* There was a problem of backward compatibility
+
+* Generics were implemented as a language capability, not a platform capability
+
+* Here comes Type Erasure
+
+== Raw types
+
+[cols="45a,55a"]
+|===
+^|*Generic Type (source)*
+^|*Raw Type (compiled)*
+|
+[source,java]
+----
+class Pair<T> {
+  private T first;
+  private T second;
+  Pair(T first,
+       T second)
+   {this.first = first;
+    this.second = second;}
+  T getFirst()
+   {return first; }
+  T getSecond()
+   {return second; }
+  void setFirst(T newValue)
+   {first = newValue;}
+  void setSecond(T newValue)
+   {second = newValue;}
+}
+----
+|
+[source,java]
+----
+class Pair {
+  private Object first;
+  private Object second;
+  Pair(Object first,
+       Object second)
+   {this.first = first;
+    this.second = second;}
+  Object getFirst()
+   {return first; }
+  Object getSecond()
+   {return second; }
+  void setFirst(Object newValue)
+   {first = newValue;}
+  void setSecond(Object newValue)
+   {second = newValue;}
+}
+----
+|===
+
+== Boundary types instead of Object
+
+[cols="45a,55a"]
+|===
+^|*Generic Type (source)*
+^|*Raw Type (compiled)*
+|
+[source,java]
+----
+class Pair<T extends Employee>{
+  private T first;
+  private T second;
+  Pair(T first,
+       T second)
+   {this.first = first;
+    this.second = second;}
+  T getFirst()
+   {return first; }
+  T getSecond()
+   {return second; }
+  void setFirst(T newValue)
+   {first = newValue;}
+  void setSecond(T newValue)
+   {second = newValue;}
+}
+----
+|
+[source,java]
+----
+class Pair {
+  private Employee first;
+  private Employee second;
+  Pair(Employee first,
+       Employee second)
+   {this.first = first;
+    this.second = second;}
+  Employee getFirst()
+   {return first; }
+  Employee getSecond()
+   {return second; }
+  void setFirst(Employee newValue)
+   {first = newValue;}
+  void setSecond(Employee newValue)
+   {second = newValue;}
+}
+----
+|===
+
+== Method calls
+
+[cols="50a,50a"]
+|===
+^|*Source code*
+^|*Compiled*
+|
+[source,java]
+----
+Pair<Manager> buddies =
+  new Pair<>();
+
+/*type control
+in compile time*/
+buddies.setFirst(cfo);
+buddies.setSecond(cto);
+
+/*type cast is not needed*/
+Manager buddy =
+  buddies.getFirst();
+----
+|
+[source,java]
+----
+Pair buddies =
+  new Pair();
+
+/*type control is not needed --
+everything was checked at compile time!*/
+buddies.setFirst(cfo);
+buddies.setSecond(cto);
+
+/*type cast inserted by compiler*/
+Manager buddy =
+  (Manager) buddies.getFirst();
+----
+|===
+
+== Bridge methods to preserve polymorphism
+
+[cols="50a,50a"]
+|===
+^|*Source code*
+^|*Compiled*
+|
+[source,java]
+----
+class DateInterval extends
+ Pair<LocalDate> {
+
+ @Override
+ void setSecond(
+        LocalDate second){
+  if (second
+   .compareTo(getFirst())>=0){
+      super.setSecond(second);
+  }
+ }
+}
+----
+|
+[source,java]
+----
+class DateInterval extends Pair {
+
+ void setSecond(
+        LocalDate second){
+  if (second
+   .compareTo(getFirst())>=0){
+      super.setSecond(second);
+  }
+ }
+
+ //bridge method!!
+ @Override
+ void setSecond(Object second){
+   setSecond((LocalDate) second);
+ }
+}
+----
+|===
+
+== The same with Kotlin
+Each lambda is compiled to an anonymous class which inherits from `FunctionImpl` and implements the corresponding `invoke`:
+
+[cols="25a,75a"]
+|===
+^|*Source code*
+^|*Compiled*
+|
+
+[source,kotlin]
+----
+{ (s: String): Int
+    -> s.length }
+----
+|
+[source,kotlin]
+----
+object : FunctionImpl(), Function1<String, Int> {
+   override fun getArity(): Int = 1
+
+/* bridge */ fun invoke(p1: Any?): Any? = ...
+
+override fun invoke(p1: String): Int = p1.length
+}
+----
+|===
+== Because of bridge methods, you cannot implement different parameterizations of the same interface in one class
+
+[cols="50a,50a"]
+|===
+^|*Source code*
+^|*Compiled*
+|
+[source,java]
+----
+class Employee implements
+  Comparable<Employee>{
+  @Override
+  int compareTo(Employee e){
+    ...
+  }
+}
+class Manager
+  extends Employee
+  implements
+  Comparable<Manager> {
+  @Override
+  int compareTo(Manager m){
+    ...
+  }
+}
+----
+|
+[source,java]
+----
+class Manager
+  extends Employee
+  implements Comparable{
+
+  //bridge method for Employee
+  int compareTo(Object m) {
+    return compareTo((Manager) m);
+  }
+
+  //bridge method for Manager
+  int compareTo(Object e) {
+    return compareTo((Employee) e);
+  }
+
+  //CLASH!!!
+}
+
+----
+|===
+
+== Summary: how it works
+
+* There are no parameterized classes in the JVM, only regular classes and methods.
+* Type parameters are replaced with Object or with boundary type.
+* Bridge methods are added to preserve polymorphism.
+* Type cast is added as needed.
+
+
+== Main Type Erasure limitation
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[plantuml, rawtype, png]
+----
+@startuml
+
+skinparam dpi 150
+
+
+class "Pair<?>" {
+---
+}
+
+class "Pair<String>" {
+
+}
+
+class "Pair<Manager>" {
+
+}
+
+
+
+"Pair<?>" <|-- "Pair<String>"
+
+"Pair<?>" <|-- "Pair<Manager>"
+
+@enduml
+----
+
+[cols="50a,50a"]
+|===
+| *Java*
+| *Kotlin*
+|
+[source,java]
+----
+if (a instanceof Pair<String>) ...
+----
+|
+
+[source,kotlin]
+----
+if (a is Pair<String>) ...
+----
+|===
+
+== Main Type Erasure limitation
+
+image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+
+[plantuml, rawtype, png]
+----
+@startuml
+
+skinparam dpi 150
+
+
+class "Pair<?>" {
+---
+}
+
+class "Pair<String>" {
+
+}
+
+class "Pair<Manager>" {
+
+}
+
+
+
+"Pair<?>" <|-- "Pair<String>"
+
+"Pair<?>" <|-- "Pair<Manager>"
+
+@enduml
+----
+
+[cols="50a,50a"]
+|===
+| *Java*
+| *Kotlin*
+|
+[source,java]
+----
+if (a instanceof Pair<String>) ...
+----
+|
+
+[source,kotlin]
+----
+if (a is Pair<String>) ...
+----
+|===
+
+image:wc.png[] We don't know the type parameter in the runtime!
+
+
+== Main Type Erasure limitation
+
+image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+
+[plantuml, rawtype, png]
+----
+@startuml
+
+skinparam dpi 150
+
+
+class "Pair<?>" {
+---
+}
+
+class "Pair<String>" {
+
+}
+
+class "Pair<Manager>" {
+
+}
+
+
+
+"Pair<?>" <|-- "Pair<String>"
+
+"Pair<?>" <|-- "Pair<Manager>"
+
+@enduml
+----
+
+[cols="50a,50a"]
+|===
+| *Java*
+| *Kotlin*
+|
+[source,java]
+----
+if (a instanceof Pair<?>) ...
+----
+|
+
+[source,kotlin]
+----
+if (a is Pair<*>) ...
+----
+|===
+
+image:ok.png[] Although we would like to know more than that...
+
+== That's why generics and arrays in Java are enemies
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[source,java]
+----
+List<String>[] a = new ArrayList<String>[10];
+----
+
+== That's why generics and arrays in Java are enemies
+
+image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+
+[source,java]
+----
+List<String>[] a = new ArrayList<String>[10];
+----
+
+image:wc.png[] "Generic Array Creation", because such an array will not have the full type information about its elements!
+
+== Now look at this code
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[cols="50a,50a"]
+|===
+|*Java*
+|*Kotlin*
+|
+[source,java]
+----
+Pair<Integer> intPair =
+       new Pair<>(42, 0);
+Pair<?> pair = intPair;
+Pair<String> stringPair =
+        (Pair<String>) pair;
+stringPair.b = "foo";
+System.out.println(
+        intPair.a * intPair.b);
+----
+|
+[source,kotlin]
+----
+var intPair = Pair<Int>(42, 0)
+var pair: Pair<*> = intPair
+var stringPair: Pair<String> =
+           pair as Pair<String>
+stringPair.b = "foo"
+println(intPair.a * intPair.b)
+----
+|===
+
+
+== Now look at this code
+
+image:hp.png[] image:hp.png[] image:hp.png[] image:hp.png[]
+
+[cols="50a,50a"]
+|===
+|*Java*
+|*Kotlin*
+|
+[source,java]
+----
+Pair<Integer> intPair =
+       new Pair<>(42, 0);
+Pair<?> pair = intPair;
+Pair<String> stringPair =
+        (Pair<String>) pair;
+stringPair.b = "foo";
+System.out.println(
+        intPair.a * intPair.b);
+----
+|
+[source,kotlin]
+----
+var intPair = Pair<Int>(42, 0)
+var pair: Pair<*> = intPair
+var stringPair: Pair<String> =
+           pair as Pair<String>
+stringPair.b = "foo"
+println(intPair.a * intPair.b)
+----
+|===
+
+image:hp.png[] `intPair` is spoiled, it's not a pair of integer values!
+
+== What if we want this?
+
+[plantuml, manempperson, png]
+----
+@startuml
+
+skinparam dpi 150
+
+class Person {
+
+}
+
+class Employee {
+
+}
+
+class Manager {
+
+}
+
+Person <|- Employee
+
+Employee <|- Manager
+
+@enduml
+----
+
+[source,java]
+----
+MyList<Manager> managers = ...
+MyList<Employee> employees = ...
+
+//Valid options, we want these to be compilable!
+employees.addAllFrom(managers);
+managers.addAllTo(employees);
+
+//Invalid options, we don't want these to be compilable!
+managers.addAllFrom(employees);
+employees.addAllTo(managers);
+
+----
+
+== A naive approach in Java...
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[source,java]
+----
+class MyList<E> implements Iterable<E> {
+    void add(E item) { ... }
+    void addAllFrom(MyList<E> list) {
+        for (E item : list) this.add(item);
+    }
+    void addAllTo(MyList<E> list) {
+        for (E item : this) list.add(item);
+    }
+  ...}
+MyList<Manager> managers = ...;  MyList<Employee> employees = ...;
+
+employees.addAllFrom(managers); managers.addAllTo(employees);
+----
+
+== A naive approach in Java...
+
+image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+
+[source,java]
+----
+class MyList<E> implements Iterable<E> {
+    void add(E item) { ... }
+    void addAllFrom(MyList<E> list) {
+        for (E item : list) this.add(item);
+    }
+    void addAllTo(MyList<E> list) {
+        for (E item : this) list.add(item);
+    }
+  ...}
+MyList<Manager> managers = ...;  MyList<Employee> employees = ...;
+
+employees.addAllFrom(managers); managers.addAllTo(employees);
+----
+
+image:wc.png[] Won't compile because of type invariance
+
+== The same naive approach in Kotlin...
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[source,kotlin]
+----
+class MyList<E> : Iterable<E> {
+  fun add(item: E) {...}
+  fun addAllFrom(list: MyList<E>) {
+    for (item in list) add(item)
+  }
+  fun addAllTo(list: MyList<E>) {
+    for (item in this) list.add(item)
+  }
+...}
+
+val managers: MyList<Manager> = ...; val employees: MyList<Employee> = ...
+
+employees.addAllFrom(managers); managers.addAllTo(employees)
+----
+
+
+== The same naive approach in Kotlin...
+
+image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+
+[source,kotlin]
+----
+class MyList<E> : Iterable<E> {
+  fun add(item: E) {...}
+  fun addAllFrom(list: MyList<E>) {
+    for (item in list) add(item)
+  }
+  fun addAllTo(list: MyList<E>) {
+    for (item in this) list.add(item)
+  }
+...}
+
+val managers: MyList<Manager> = ...; val employees: MyList<Employee> = ...
+
+employees.addAllFrom(managers); managers.addAllTo(employees)
+----
+
+image:wc.png[] Won't compile because of type invariance
+
+== Java Covariant Wildcard Types
+
+[plantuml, wildext, png]
+----
+@startuml
+
+skinparam dpi 150
+
+class "MyList<? extends Employee>" {
+}
+
+class "MyList<Employee>" {
+
+}
+
+class "MyList<Manager>" {
+
+}
+
+"MyList<? extends Employee>" <|-- "MyList<Employee>"
+
+"MyList<? extends Employee>" <|-- "MyList<Manager>"
+
+@enduml
+----
+
+[source,java]
+----
+class MyList<E> implements Iterable<E> {
+    void addAllFrom (List<? extends E> list){
+       for (Е item: list) add(item); }
+}
+MyList<Manager> managers = ...; MyList<Employee> employees = ...
+employees.addAllFrom(managers);
+----
+
+image:ok.png[] If `E` is `Employee`, `MyList<Manager>` will do as `MyList<? extends E>`!!
+
+
+== Kotlin Covariant Use-Site Type Projections
+
+[plantuml, outext, png]
+----
+@startuml
+
+skinparam dpi 150
+
+class "List<out Employee>" {
+}
+
+
+class "List<Employee>" {
+
+}
+
+class "List<Manager>" {
+
+}
+
+"List<out Employee>" <|-- "List<Employee>"
+
+"List<out Employee>" <|-- "List<Manager>"
+
+@enduml
+----
+
+[source,kotlin]
+----
+class MyList<E> : Iterable<E> {
+    fun addAllFrom(list: MyList<out E>) {
+        for (item in list) add(item) }
+}
+val managers: MyList<Manager> = ... ; val employees: MyList<Employee> = ...
+employees.addAllFrom(managers)
+----
+
+image:ok.png[] If `E` is `Employee`, `MyList<Manager>` will do as `MyList<out E>`!!
+
+
+== Declaration-site covariance in Kotlin for read-only values
+
+This is what Java doesn't have:
+
+[source,kotlin]
+----
+class MyImmutablePair<out E>(val a: E, val b: E)
+----
+* In this class, we can only declare methods that return something of type E,
+but not accessible methods that will have E-typed arguments.
+* Constructor parameters and private methods with E-typed arguments are OK!
+
+== Declaration-site covariance in Kotlin for read-only values
+
+[plantuml, declsitecov, png]
+----
+@startuml
+
+skinparam dpi 150
+
+"MyImmutablePair<Employee>" <|- "MyImmutablePair<Manager>"
+
+@enduml
+----
+
+[source,kotlin]
+----
+class MyList<E> : Iterable<E> {
+  //Don't bother about use-site type variance!
+  fun addAllFrom(pair: MyImmutablePair<E>){
+    add(pair.a); add(pair.b) }
+  ...
+}
+
+val twoManagers: MyImmutablePair<Manager> = ...
+employees.addAllFrom(twoManagers)
+----
+
+image:ok.png[] `MyImmutablePair<Manager>` is assignable to `MyImmutablePair<Employee>`
+
+
+== So what can be done with an object typed `? extends` in Java?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+
+[source,java]
+----
+<E> void  doSomething (MyList<? extends E> list) {
+  E e1 = list.get(...);
+----
+
+== So what can be done with an object typed `? extends` in Java?
+
+image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+
+[source,java]
+----
+<E> void  doSomething (MyList<? extends E> list) {
+  E e1 = list.get(...);
+}
+----
+image:ok.png[] Of course!
+
+
+== So what can be done with an object typed `? extends` in Java?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+[source,java]
+----
+<E> void  doSomething (MyList<? extends E> list) {
+  E e2 = ...;
+  list.add(e2);
+}
+----
+
+== So what can be done with an object typed `? extends` in Java?
+image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+[source,java]
+----
+<E> void  doSomething (MyList<? extends E> list) {
+  E e2 = ...;
+  list.add(e2);
+}
+----
+image:wc.png[] Why?
+
+
+== So what can be done with an object typed `? extends` in Java?
+
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+[source,java]
+----
+<E> void  doSomething (MyList<? extends E> list) {
+  list.add(null);
+}
+----
+
+== So what can be done with an object typed `? extends` in Java?
+
+image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+[source,java]
+----
+<E> void  doSomething (MyList<? extends E> list) {
+  list.add(null);
+}
+----
+image:ok.png[] Why?
+
+== Unbounded wildcard in Java
+
+* If `Foo<T extends Bound>`, then `Foo<?>` is the same as `Foo<? extends Bound>`.
+* We can read elements, but only as `Bound` (or `Object`, if no `Bound` is given).
+* If we're using intersection types `Foo<T extends Bound1 & Bound2>`, any of the bound types will do.
+* We can put only `null` values.
+* Star-projection `Foo<*>` in Kotlin looks similar, but we'll cover it later...
+
+== So what can be done with an object typed `out` in Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<out E?>) {
+    val e1: E? = list.get(...)
+}
+----
+
+== So what can be done with an object typed `out` in Kotlin?
+image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<out E?>) {
+    val e1: E? = list.get(...)
+}
+----
+image:ok.png[]
+
+
+== So what can be done with an object typed `out` in Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<out E?>) {
+    val e2: E? = ...
+    list.add(e2)
+}
+----
+
+== So what can be done with an object typed `out` in Kotlin?
+image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<out E?>) {
+    val e2: E? = ...
+    list.add(e2)
+}
+----
+image:wc.png[]
+
+
+== So what can be done with an object typed `out` in Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<out E?>) {
+    list.add(null)
+}
+----
+== So what can be done with an object typed `out` in Kotlin?
+
+image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<out E?>) {
+    list.add(null)
+}
+----
+image:wc.png[]
+
+== We've been talking about covariancy so far. What about contravariancy?
+
+[cols="50a,50a"]
+|===
+|
+
+`Covariant<out E>`
+
+[plantuml,covclass,png]
+----
+@startuml
+skinparam dpi 150
+class Person {
+}
+class Employee {
+}
+class "Covariant<Person>" {
+}
+class "Covariant<Employee>" {
+}
+"Covariant<Person>" <\|-- "Covariant<Employee>"
+"Covariant<Person>" .> Person
+Person <\|-- Employee
+"Covariant<Employee>".>Employee
+@enduml
+----
+
+|
+
+`Contravariant<in E>`
+[plantuml,contravclass,png]
+----
+@startuml
+skinparam dpi 150
+class Person {
+}
+class Employee {
+}
+class "Contravariant<Person>" {
+}
+class "Contravariant<Employee>" {
+}
+Person   <\|--  Employee
+"Contravariant<Employee>" <\|-u- "Contravariant<Person>"
+
+"Contravariant<Employee>".>Employee
+"Contravariant<Person>" .> Person
+@enduml
+----
+|===
+
+[.fragment]
+`Predicate<Person>` can substitute `Predicate<Employee>` and `Predicate<Manager>`, and thus it can be considered as their subtype.
+
+== Java wildcard contravariant types
+
+[plantuml, wildsup, png]
+----
+@startuml
+
+skinparam dpi 150
+
+class "List<? super Employee>" {
+}
+
+
+class "List<Employee>" {
+
+}
+
+class "List<Person>" {
+
+}
+
+"List<? super Employee>" <|-- "List<Person>"
+
+"List<? super Employee>" <|-- "List<Employee>"
+
+@enduml
+----
+
+[source,java]
+----
+class MyList<E> implements Iterable<E> {
+    void addAllTo (List<? super E> list) {
+       for (Е item: this) list.add(item); }
+}
+MyList<Employee> employees = ...; MyList<Person> people = ...;
+
+employees.addAllTo(people);
+----
+
+image:ok.png[] If `E` is `Employee`, `MyList<Person>` will do as `MyList<? super E>`!
+
+
+== Kotlin Contravariant Use-Site Type Projections
+
+[plantuml, inext, png]
+----
+@startuml
+
+skinparam dpi 150
+
+class "List<in Employee>" {
+}
+
+
+class "List<Employee>" {
+
+}
+
+class "List<Person>" {
+
+}
+
+"List<in Employee>" <|-- "List<Employee>"
+
+"List<in Employee>" <|-- "List<Person>"
+
+@enduml
+----
+
+[source,kotlin]
+----
+class MyList<E> : Iterable<E> {
+    fun addAllTo(list: MyList<in E>) {
+        for (item in this) list.add(item) }
+}
+val employees: MyList<Employee> = ... ; val people: MyList<Person> = ...
+
+employees.addAllTo(people)
+----
+
+image:ok.png[] If `E` is `Employee`, `MyList<Person>` will do as `MyList<in E>`!
+
+== Declaration-site contravariance in Kotlin for write-only values
+
+[source,kotlin]
+----
+class MyConsumer<in E> {
+    fun consume(p: E){
+        ...
+    }
+}
+----
+* Now we can define methods that have E-typed arguments, but we cannot expose anything of type E.
+* We can have private class variables of type E, and even private methods that return E, though.
+
+== Declaration-site contravariance in Kotlin for write-only values
+
+[plantuml, declsitecov, png]
+----
+@startuml
+
+skinparam dpi 150
+
+"MyConsumer<Employee>" <|- "MyConsumer<Person>"
+
+@enduml
+----
+
+[source,kotlin]
+----
+class MyList<E> : Iterable<E> {
+  //Don't bother about use-site type variance!
+  fun addAllTo(consumer: MyConsumer<E>){
+        for (item in this) consumer.consume(item)
+  }
+  ...
+}
+val employees: MyList<Employee> = ...
+val personConsumer: MyConsumer<Person> = ...
+employees.addAllTo(personConsumer)
+----
+
+image:ok.png[] `MyConsumer<Person>` is assignable to `MyConsumer<Employee>`
+
+
+== So what can be done with an object typed `? super` in Java?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+[source,java]
+----
+<E> void  doSomething (MyList<? super E> list) {
+  E e1 = ...;
+  list.add(e1);
+  list.add(null);
+}
+----
+
+== So what can be done with an object typed `? super` in Java?
+image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+[source,java]
+----
+<E> void  doSomething (MyList<? super E> list) {
+  E e1 = ...;
+  list.add(e1);
+  list.add(null);
+}
+----
+image:ok.png[]
+
+
+== So what can be done with an object typed `? super` in Java?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+[source,java]
+----
+<E> void  doSomething (MyList<? super E> list) {
+  E e2 = list.get(...);
+}
+----
+
+== So what can be done with an object typed `? super` in Java?
+image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+[source,java]
+----
+<E> void  doSomething (MyList<? super E> list) {
+  E e2 = list.get(...);
+}
+----
+image:wc.png[]
+
+== So what can be done with an object typed `? super` in Java?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+[source,java]
+----
+<E> void  doSomething (MyList<? super E> list) {
+  Object e2 = list.get(...);
+}
+----
+
+== So what can be done with an object typed `? super` in Java?
+image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+[source,java]
+----
+<E> void  doSomething (MyList<? super E> list) {
+  Object e2 = list.get(...);
+}
+----
+image:ok.png[]
+
+== So what can be done with an object typed `in` in Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<in E>) {
+    val e1: E = ...
+    list.add(e1)
+}
+----
+
+== So what can be done with an object typed `in` in Kotlin?
+image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<in E>) {
+    val e1: E = ...
+    list.add(e1)
+}
+----
+image:ok.png[]
+
+== So what can be done with an object typed `in` in Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<in E>) {
+    list.add(null)
+}
+----
+
+== So what can be done with an object typed `in` in Kotlin?
+image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<in E>) {
+    list.add(null)
+}
+----
+image:wc.png[]
+
+== So what can be done with an object typed `in` in Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<in E?>) {
+    list.add(null)
+}
+----
+
+== So what can be done with an object typed `in` in Kotlin?
+image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<in E?>) {
+    list.add(null)
+}
+----
+image:ok.png[]
+
+
+== So what can be done with an object typed `in` in Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<in E>) {
+    val first: Any = list.first()
+}
+----
+
+== So what can be done with an object typed `in` in Kotlin?
+image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<in E>) {
+    val first: Any = list.first()
+}
+----
+image:wc.png[]
+
+== So what can be done with an object typed `in` in Kotlin?
+image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<in E>) {
+    val first: Any? = list.first()
+}
+----
+
+== So what can be done with an object typed `in` in Kotlin?
+image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+[source,java]
+----
+fun <E> doSomething (list: MyList<in E>) {
+    val first: Any = list.first()
+}
+----
+image:ok.png[]
+
+== Star projection in Kotlin
+
+`Foo<*>`
+
+* `Foo<T : TUpper>` (invariant):
+** you can read values as `TUpper`
+** you cannot write anything (even null)
+
+* `Foo<out T : TUpper>` (covariant):
+** you can read values as `TUpper`
+
+*  `Foo<in T: TUpper>` (contravariant):
+** you still cannot write anything :-)
+
+
+== Mnemonic rule for Java
+
+*PECS*
+
+*Producer -- Extends, Consumer -- Super*
+
+[source,java]
+----
+public static <T> max (Collection<? extends T> coll,
+                       Comparator<? super T> comp)
+
+Collections.max(List<Integer>, Comparator<Number>)
+Collections.max(List<String>, Comparator<Object>)
+----
+
+== Kotlin
+
+*Producer -- Out, Consumer -- In*
+
+Rule of thumb:
+
+* if you only read values of `T`, make it `out` on declaration site
+* if you only write values of `T`, make it `in` on declaration site
+
+== Declaration-site variance is not just 'sugar'!
+
+* Kafka Streams `KStream<K, V>`, `KTable<K, V>` classes are semantically covariant: stream of `Employee` can be safely considered as a stream of `Person`!!
+
+* This cannot be fixed even by adding `? extends` everywhere...
+
+== A real life problem in KStreams API design
+[source,java]
+----
+/* LIBRARY CODE */
+class KStream<E> { ... }
+class Processor<E> {
+  void withFunction(Function<? super KStream<E>,
+                             ? extends KStream<E>> chain) {...}
+}
+/* USER'S CODE */
+KStream<Employee> transformA(KStream<Employee> s) {...}
+KStream<Manager> transformB(KStream<Person> s) {...}
+
+/* We want to use method references! */
+Processor<Employee> processor = ...
+processor.withFunction(this::transformA);
+processor.withFunction(this::transformB);
+----
+
+image:wc.png[] Although  `this::transformA` will do, `this::transformB` will fail with "KStream<Employee> is not convertible to KStream<Person>"
+
+== What if we try to fix it...
+
+[source,java]
+----
+/* LIBRARY CODE */
+class KStream<E> { ... }
+class Processor<E> {
+  void withFunction(Function<? super KStream<? super E>,
+                             ? extends KStream<? extends E>> chain) {...}
+}
+/* USER'S CODE */
+KStream<Employee> transformA(KStream<Employee> s) { ... }
+KStream<Manager> transformB(KStream<Person> s) { ... }
+
+Processor<Employee> processor = new Processor<>();
+processor.withFunction(this::transformA);
+processor.withFunction(this::transformB);
+----
+
+image:wc.png[] Both lines won't compile with something like "KStream<capture of ? super Employee> is not convertible to KStream<Employee>"
+
+== Meanwhile in Kotlin...
+
+[source,kotlin]
+----
+/* LIBRARY CODE */
+class KStream<out E>
+class Processor<E> {
+  fun withFunction(chain: (KStream<E>) -> KStream<E>) {}
+}
+/* USER'S CODE */
+fun transformA(s: KStream<Employee>): KStream<Employee> { ... }
+fun transformB(s: KStream<Person>): KStream<Manager> { ... }
+
+val processor: Processor<Employee> = Processor()
+processor.withFunction(this::transformA)
+processor.withFunction(this::transformB)
+----
+
+image:ok.png[] Everything will compile and run as intended!
+
+== Conclusions
+
+* Usage of ready-made generic types is straightforward
+* In order to create your own generic types, you MUST understand the key principles
+
+== Conclusions
+* Kotlin offers great enhancements for Java Generics, making usage of ready-made generic types even more straightforward
+* But in order to create your own generic types in Kotlin, it's even more important to understand the key principles!
+
+== Covariance vs. Contravariance
+
+[cols="50a,50a"]
+|===
+| *Covariance*
+| *Contravariance*
+|
+[plantuml,covclass,png]
+----
+@startuml
+skinparam dpi 150
+class Person {
+}
+class Employee {
+}
+class "Covariant<Person>" {
+}
+class "Covariant<Employee>" {
+}
+"Covariant<Person>" <\|-- "Covariant<Employee>"
+"Covariant<Person>" .> Person
+Person <\|-- Employee
+"Covariant<Employee>".>Employee
+@enduml
+----
+
+|
+[plantuml,contravclass,png]
+----
+@startuml
+skinparam dpi 150
+class Person {
+}
+class Employee {
+}
+class "Contravariant<Person>" {
+}
+class "Contravariant<Employee>" {
+}
+Person   <\|--  Employee
+"Contravariant<Employee>" <\|-u- "Contravariant<Person>"
+
+"Contravariant<Employee>".>Employee
+"Contravariant<Person>" .> Person
+@enduml
+----
+|===
+
+== Covariance vs. Invariance vs. Contravariance
+
+[plantuml, ab, png]
+----
+@startuml
+
+skinparam dpi 150
+
+class A {
+
+}
+
+class B {
+
+}
+
+
+A <|- B
+
+@enduml
+----
+
+[cols="^33a,^34a,^33a"]
+|===
+
+| *Covariance*
+| *Invariance*
+| *Contravariance*
+|
+
+[cols="34a,^33a,^33a"]
+!===
+! [.right]#To →#
+
+From ↓           !`C<A>`!`C<B>`
+!`C<A>`  !image:ok.png[]!image:wc.png[]  
+!`C<B>`!image:ok.png[]!image:ok.png[]  
+!===
+
+|
+
+[cols="34a,^33a,^33a"]
+!===
+! [.right]#To →#
+
+From ↓           !`C<A>`!`C<B>`
+!`C<A>`  !image:ok.png[]!image:wc.png[]
+!`C<B>`!image:wc.png[]!image:ok.png[]
+!===
+
+|
+
+[cols="34a,^33a,^33a"]
+!===
+! [.right]#To →#
+
+From ↓           !`C<A>`!`C<B>`
+!`C<A>`  !image:ok.png[]!image:ok.png[]
+!`C<B>`!image:wc.png[]!image:ok.png[]
+!===
+
+|===
+
+
+== Thanks for listening!
+
+Producer Extends, Consumer Super
+
+Producer Out, Consumer In
+
+
+icon:envelope[size=lg] ivan@synthesized.io
+
+icon:twitter[size=lg] @inponomarev
