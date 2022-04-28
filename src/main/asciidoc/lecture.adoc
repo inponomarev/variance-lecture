@@ -1,5 +1,5 @@
 = Type variance in Java and Kotlin
-Иван Пономарев
+Ivan Ponomarev
 :revealjs_theme: black
 :revealjs_customtheme: white_course.css
 :revealjs_slideNumber:
@@ -41,11 +41,17 @@ Ivan Ponomarev
 * Teaching Java @ МФТИ and Mainor
 |===
 
-== Type variance (invariance, covariance, contravariance)
+== Type variance
 
+* invariance
+* covariance
+* contravariance
 
+== It sounds scary
 
-* "It sounds scary. Do I need to know it?"
+Do we need to know it?
+
+image::functors.png[]
 
 == Type variance
 
@@ -60,9 +66,9 @@ Ivan Ponomarev
 
 == How I'm going to explain it
 
-* I will show the full evolution from historical perspective: from Java typed arrays through Java generics to Kotlin generics
-* Thus it will be a walk from simple to complex stuff
+* I will show the full evolution from historical perspective: from Java typed arrays through Java generics to Kotlin generics, from primitive to complex stuff
 
+image::evolution.svg[]
 
 == We'll be using this example of type hierarchy everywhere
 
@@ -1402,7 +1408,7 @@ image:ok.png[] `MyImmutablePair<Manager>` is assignable to `MyImmutablePair<Empl
 
 == So what can be done with an object typed `? extends` in Java?
 
-image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+image:wc.png[] image:ok.png[]
 
 [source,java]
 ----
@@ -1412,7 +1418,7 @@ image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
 
 == So what can be done with an object typed `? extends` in Java?
 
-image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+image:ok.png[] image:ok.png[]
 
 [source,java]
 ----
@@ -1424,7 +1430,7 @@ image:ok.png[] Of course!
 
 
 == So what can be done with an object typed `? extends` in Java?
-image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+image:wc.png[] image:ok.png[]
 [source,java]
 ----
 <E> void  doSomething (MyList<? extends E> list) {
@@ -1434,7 +1440,7 @@ image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
 ----
 
 == So what can be done with an object typed `? extends` in Java?
-image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+image:wc.png[] image:wc.png[]
 [source,java]
 ----
 <E> void  doSomething (MyList<? extends E> list) {
@@ -1447,7 +1453,7 @@ image:wc.png[] Why?
 
 == So what can be done with an object typed `? extends` in Java?
 
-image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+image:wc.png[] image:ok.png[]
 [source,java]
 ----
 <E> void  doSomething (MyList<? extends E> list) {
@@ -1457,7 +1463,7 @@ image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
 
 == So what can be done with an object typed `? extends` in Java?
 
-image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+image:ok.png[] image:ok.png[]
 [source,java]
 ----
 <E> void  doSomething (MyList<? extends E> list) {
@@ -1475,7 +1481,7 @@ image:ok.png[] Why?
 * Star-projection `Foo<*>` in Kotlin looks similar, but we'll cover it later...
 
 == So what can be done with an object typed `out` in Kotlin?
-image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+image:wc.png[] image:ok.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<out E?>) {
@@ -1484,7 +1490,7 @@ fun <E> doSomething (list: MyList<out E?>) {
 ----
 
 == So what can be done with an object typed `out` in Kotlin?
-image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+image:ok.png[] image:ok.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<out E?>) {
@@ -1495,7 +1501,7 @@ image:ok.png[]
 
 
 == So what can be done with an object typed `out` in Kotlin?
-image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+image:wc.png[] image:ok.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<out E?>) {
@@ -1505,7 +1511,7 @@ fun <E> doSomething (list: MyList<out E?>) {
 ----
 
 == So what can be done with an object typed `out` in Kotlin?
-image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+image:wc.png[] image:wc.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<out E?>) {
@@ -1517,7 +1523,7 @@ image:wc.png[]
 
 
 == So what can be done with an object typed `out` in Kotlin?
-image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+image:wc.png[] image:ok.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<out E?>) {
@@ -1526,7 +1532,7 @@ fun <E> doSomething (list: MyList<out E?>) {
 ----
 == So what can be done with an object typed `out` in Kotlin?
 
-image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+image:wc.png[] image:wc.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<out E?>) {
@@ -1714,7 +1720,7 @@ image:ok.png[] `MyConsumer<Person>` is assignable to `MyConsumer<Employee>`
 
 
 == So what can be done with an object typed `? super` in Java?
-image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+image:wc.png[] image:ok.png[]
 [source,java]
 ----
 <E> void  doSomething (MyList<? super E> list) {
@@ -1725,7 +1731,7 @@ image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
 ----
 
 == So what can be done with an object typed `? super` in Java?
-image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+image:ok.png[] image:ok.png[]
 [source,java]
 ----
 <E> void  doSomething (MyList<? super E> list) {
@@ -1738,7 +1744,7 @@ image:ok.png[]
 
 
 == So what can be done with an object typed `? super` in Java?
-image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+image:wc.png[] image:ok.png[]
 [source,java]
 ----
 <E> void  doSomething (MyList<? super E> list) {
@@ -1747,7 +1753,7 @@ image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
 ----
 
 == So what can be done with an object typed `? super` in Java?
-image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+image:wc.png[] image:wc.png[]
 [source,java]
 ----
 <E> void  doSomething (MyList<? super E> list) {
@@ -1757,7 +1763,7 @@ image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
 image:wc.png[]
 
 == So what can be done with an object typed `? super` in Java?
-image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+image:wc.png[] image:ok.png[]
 [source,java]
 ----
 <E> void  doSomething (MyList<? super E> list) {
@@ -1766,7 +1772,7 @@ image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
 ----
 
 == So what can be done with an object typed `? super` in Java?
-image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+image:ok.png[] image:ok.png[]
 [source,java]
 ----
 <E> void  doSomething (MyList<? super E> list) {
@@ -1776,7 +1782,7 @@ image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
 image:ok.png[]
 
 == So what can be done with an object typed `in` in Kotlin?
-image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+image:wc.png[] image:ok.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<in E>) {
@@ -1786,7 +1792,7 @@ fun <E> doSomething (list: MyList<in E>) {
 ----
 
 == So what can be done with an object typed `in` in Kotlin?
-image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+image:ok.png[] image:ok.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<in E>) {
@@ -1797,7 +1803,7 @@ fun <E> doSomething (list: MyList<in E>) {
 image:ok.png[]
 
 == So what can be done with an object typed `in` in Kotlin?
-image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+image:wc.png[] image:ok.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<in E>) {
@@ -1806,7 +1812,7 @@ fun <E> doSomething (list: MyList<in E>) {
 ----
 
 == So what can be done with an object typed `in` in Kotlin?
-image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+image:wc.png[] image:wc.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<in E>) {
@@ -1816,7 +1822,7 @@ fun <E> doSomething (list: MyList<in E>) {
 image:wc.png[]
 
 == So what can be done with an object typed `in` in Kotlin?
-image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+image:wc.png[] image:ok.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<in E?>) {
@@ -1825,7 +1831,7 @@ fun <E> doSomething (list: MyList<in E?>) {
 ----
 
 == So what can be done with an object typed `in` in Kotlin?
-image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+image:ok.png[] image:ok.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<in E?>) {
@@ -1836,7 +1842,7 @@ image:ok.png[]
 
 
 == So what can be done with an object typed `in` in Kotlin?
-image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+image:wc.png[] image:ok.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<in E>) {
@@ -1845,7 +1851,7 @@ fun <E> doSomething (list: MyList<in E>) {
 ----
 
 == So what can be done with an object typed `in` in Kotlin?
-image:wc.png[] image:wc.png[] image:wc.png[] image:wc.png[]
+image:wc.png[] image:wc.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<in E>) {
@@ -1855,7 +1861,7 @@ fun <E> doSomething (list: MyList<in E>) {
 image:wc.png[]
 
 == So what can be done with an object typed `in` in Kotlin?
-image:wc.png[] image:rt.png[] image:ok.png[] image:hp.png[]
+image:wc.png[] image:ok.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<in E>) {
@@ -1864,7 +1870,7 @@ fun <E> doSomething (list: MyList<in E>) {
 ----
 
 == So what can be done with an object typed `in` in Kotlin?
-image:ok.png[] image:ok.png[] image:ok.png[] image:ok.png[]
+image:ok.png[] image:ok.png[]
 [source,java]
 ----
 fun <E> doSomething (list: MyList<in E>) {
@@ -1991,10 +1997,16 @@ image:ok.png[] Everything will compile and run as intended!
 
 == Covariance vs. Contravariance
 
-[cols="50a,50a"]
+[cols="^50a,^50a"]
 |===
-| *Covariance*
-| *Contravariance*
+| *Covariance* +
+`? extends` +
+`out` +
+read-only
+| *Contravariance* +
+`? super` +
+`in` +
+write-only
 |
 [plantuml,covclass,png]
 ----
