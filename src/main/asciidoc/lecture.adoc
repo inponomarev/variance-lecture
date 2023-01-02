@@ -1333,21 +1333,20 @@ image:ok.png[] If `E` is `Employee`, `MyList<Manager>` will do as `MyList<? exte
 
 skinparam dpi 150
 
-class "List<out Employee>" {
+class "MyList<out Employee>" {
 }
 
-
-class "List<Employee>" {
-
-}
-
-class "List<Manager>" {
+class "MyList<Employee>" {
 
 }
 
-"List<out Employee>" <|-- "List<Employee>"
+class "MyList<Manager>" {
 
-"List<out Employee>" <|-- "List<Manager>"
+}
+
+"MyList<out Employee>" <|-- "MyList<Employee>"
+
+"MyList<out Employee>" <|-- "MyList<Manager>"
 
 @enduml
 ----
@@ -1603,21 +1602,21 @@ Person   <\|--  Employee
 
 skinparam dpi 150
 
-class "List<? super Employee>" {
+class "MyList<? super Employee>" {
 }
 
 
-class "List<Employee>" {
+class "MyList<Employee>" {
 
 }
 
-class "List<Person>" {
+class "MyList<Person>" {
 
 }
 
-"List<? super Employee>" <|-- "List<Person>"
+"MyList<? super Employee>" <|-- "MyList<Person>"
 
-"List<? super Employee>" <|-- "List<Employee>"
+"MyList<? super Employee>" <|-- "MyList<Employee>"
 
 @enduml
 ----
@@ -1644,21 +1643,21 @@ image:ok.png[] If `E` is `Employee`, `MyList<Person>` will do as `MyList<? super
 
 skinparam dpi 150
 
-class "List<in Employee>" {
+class "MyList<in Employee>" {
 }
 
 
-class "List<Employee>" {
+class "MyList<Employee>" {
 
 }
 
-class "List<Person>" {
+class "MyList<Person>" {
 
 }
 
-"List<in Employee>" <|-- "List<Employee>"
+"MyList<in Employee>" <|-- "MyList<Employee>"
 
-"List<in Employee>" <|-- "List<Person>"
+"MyList<in Employee>" <|-- "MyList<Person>"
 
 @enduml
 ----
@@ -1902,7 +1901,7 @@ image:ok.png[]
 
 [source,java]
 ----
-public static <T> max (Collection<? extends T> coll,
+public static <T> T max (Collection<? extends T> coll,
                        Comparator<? super T> comp)
 
 Collections.max(List<Integer>, Comparator<Number>)
